@@ -5,7 +5,7 @@ const { jwtSign } = require("../utils/jwt.util");
 const signUp = async (req, res) => {
   try {
     const { name, email, password, role, bossName } = req.body;
-    console.log(name, email, password, role, bossName);
+
     const user = await User.findOne({
       email,
     });
@@ -16,10 +16,18 @@ const signUp = async (req, res) => {
       });
     }
 
+    const adminExists = await User.exists({ role: "administrator" });
+    if (role === "administrator" && adminExists) {
+      return res.status(400).json({
+        message:
+          "Administrator user already exists. Only one user can be administrator",
+      });
+    }
+
     let bossId = null;
 
     if (role !== "administrator" && bossName) {
-      const boss = await User.findOne({ name: bossName, role: "boss" });
+      const boss = await User.findOne({ name: bossName });
       if (!boss) {
         return res
           .status(400)
@@ -33,7 +41,6 @@ const signUp = async (req, res) => {
       email,
       password: hashPassword(password),
       role,
-      bossName,
       bossId,
     });
 

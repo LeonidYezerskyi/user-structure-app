@@ -18,14 +18,8 @@ const User = new Schema({
   role: {
     type: String,
     required: true,
-    enum: ["administrator ", "boss", "regular"],
+    enum: ["administrator", "boss", "regular"],
     default: "regular",
-  },
-  bossName: {
-    type: String,
-    required: function () {
-      return this.role !== "administrator";
-    },
   },
   token: String,
   bossId: {
