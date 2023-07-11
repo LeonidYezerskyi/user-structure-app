@@ -9,10 +9,16 @@ const signUp = async (req, res) => {
     const user = await User.findOne({
       email,
     });
-
     if (user) {
       return res.status(409).send({
         message: "Email in use",
+      });
+    }
+
+    const usersCount = await User.countDocuments();
+    if (usersCount === 0 && role !== "administrator") {
+      return res.status(400).json({
+        message: "The first registered user must be only an administrator",
       });
     }
 
