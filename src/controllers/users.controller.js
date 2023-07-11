@@ -150,8 +150,58 @@ const getUsers = async (req, res) => {
   }
 };
 
+const changeUserBoss = async (req, res) => {
+  const userId = req.params.id;
+  const { newBossId } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+
+    const boss = await User.findOne({
+      _id: user.bossId,
+    });
+
+    if (!boss) {
+      return res.status(403).json({
+        message: "Access denied, only boss can change user's boss",
+      });
+    }
+
+    const loggedInUser = await User.findById(req.userId);
+    console.log(req.userd);
+
+    if (loggedInUser.role !== "boss") {
+      return res.status(403).json({
+        message: "Access denied. Only boss can change the user's boss.",
+      });
+    }
+
+    if (boss._id !== loggedInUser._id) {
+      return res.status(403).json({
+        message: "Access denied. Only boss can change the user's boss.",
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { bossId: newBossId },
+      { new: true }
+    );
+
+    return res
+      .status(200)
+      .json({ message: "User's boss has been changed", user: updatedUser });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: "Server error, something went wrong!" });
+  }
+};
+
 module.exports = {
   signUp,
   authenticateUser,
   getUsers,
+  changeUserBoss,
 };
