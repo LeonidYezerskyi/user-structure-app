@@ -1,5 +1,5 @@
 const User = require("../models/user.model");
-const { hashPassword } = require("../utils/hash.util");
+const { hashPassword, comparePasswords } = require("../utils/hash.util");
 const { jwtSign } = require("../utils/jwt.util");
 
 const signUp = async (req, res) => {
@@ -75,6 +75,48 @@ const signUp = async (req, res) => {
   }
 };
 
+const authenticateUser = async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({
+    email,
+  });
+
+  if (!user) {
+    return res.status(401).send({
+      message: "Email or password is wrong",
+    });
+  }
+
+  const isPasswordValid = comparePasswords(password, user.password);
+  if (!isPasswordValid) {
+    return res.status(401).send({
+      message: "Email or password is wrong",
+    });
+  }
+
+  const updatedUser = await User.findOneAndUpdate(
+    {
+      _id: user._id,
+    },
+    {
+      token: jwtSign({ _id: user._id }),
+    },
+    {
+      new: true,
+    }
+  ).select("-password");
+
+  res.status(200).send({
+    token: updatedUser.token,
+    user: { email: user.email, role: user.role },
+  });
+};
+
+const getUsers = async (req, res) => {};
+
 module.exports = {
   signUp,
+  authenticateUser,
+  getUsers,
 };
