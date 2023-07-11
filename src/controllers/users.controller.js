@@ -113,7 +113,42 @@ const authenticateUser = async (req, res) => {
   });
 };
 
-const getUsers = async (req, res) => {};
+const getUsers = async (req, res) => {
+  const { role, userId } = req.body;
+
+  try {
+    if (role === "administrator") {
+      const users = await User.find();
+      return res.status(200).json({ users });
+    } else if (role === "boss") {
+      const boss = await User.findById(userId);
+
+      if (boss.role !== "boss") {
+        return res.status(403).json({
+          message: "User is not authorized to perform this operation",
+        });
+      }
+
+      const subordinates = await User.find({ bossId: userId });
+      return res.status(200).json({ boss, subordinates });
+    } else if (role === "regular") {
+      const user = await User.findById(userId);
+
+      if (user.role !== "regular") {
+        return res.status(403).json({
+          message: "User is not authorized to perform this operation",
+        });
+      }
+
+      return res.status(200).json({ users: [user] });
+    } else {
+      return res.status(400).json({ message: "Invalid user role" });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server Error" });
+  }
+};
 
 module.exports = {
   signUp,
