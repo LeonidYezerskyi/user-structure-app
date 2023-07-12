@@ -7,6 +7,12 @@ const jwtSign = (payload) => {
   return token;
 };
 
+const jwtVerify = (token) => {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  return decoded;
+};
+
 module.exports = {
   jwtSign,
+  jwtVerify,
 };

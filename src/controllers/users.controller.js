@@ -1,6 +1,7 @@
 const User = require("../models/user.model");
 const { hashPassword, comparePasswords } = require("../utils/hash.util");
-const { jwtSign } = require("../utils/jwt.util");
+const { jwtSign, jwtVerify } = require("../utils/jwt.util");
+require("dotenv").config();
 
 const signUp = async (req, res) => {
   try {
@@ -150,6 +151,39 @@ const getUsers = async (req, res) => {
   }
 };
 
+const isAuthorized = async (req, res, next) => {
+  const token = req.headers.authorization;
+
+  try {
+    if (!token) {
+      return res.status(401).send({
+        message: "Not authorized",
+      });
+    }
+
+    const decoded = jwtVerify(token);
+
+    const user = await User.findOne({
+      _id: decoded._id,
+    });
+
+    if (!user.token || !user._id) {
+      return res.status(401).send({
+        message: "Not authorized",
+      });
+    }
+
+    req.userId = decoded._id;
+
+    next();
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(403)
+      .json({ message: "Your session has timed out. You need to log in" });
+  }
+};
+
 const changeUserBoss = async (req, res) => {
   const userId = req.params.id;
   const { newBossId } = req.body;
@@ -168,15 +202,14 @@ const changeUserBoss = async (req, res) => {
     }
 
     const loggedInUser = await User.findById(req.userId);
-    console.log(req.userd);
 
     if (loggedInUser.role !== "boss") {
       return res.status(403).json({
-        message: "Access denied. Only boss can change the user's boss.",
+        message: "Access denied, only boss can change the user's boss.",
       });
     }
 
-    if (boss._id !== loggedInUser._id) {
+    if (boss._id.toString() !== loggedInUser._id.toString()) {
       return res.status(403).json({
         message: "Access denied. Only boss can change the user's boss.",
       });
@@ -204,4 +237,5 @@ module.exports = {
   authenticateUser,
   getUsers,
   changeUserBoss,
+  isAuthorized,
 };
