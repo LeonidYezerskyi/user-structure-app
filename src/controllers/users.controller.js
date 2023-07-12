@@ -119,19 +119,27 @@ const getUsers = async (req, res) => {
 
   try {
     if (role === "administrator") {
+      const user = await User.findById(userId);
+
+      if (user.role !== "administrator") {
+        return res.status(403).json({
+          message: "User is not authorized to perform this operation",
+        });
+      }
+
       const users = await User.find();
       return res.status(200).json({ users });
     } else if (role === "boss") {
-      const boss = await User.findById(userId);
+      const user = await User.findById(userId);
 
-      if (boss.role !== "boss") {
+      if (user.role !== "boss") {
         return res.status(403).json({
           message: "User is not authorized to perform this operation",
         });
       }
 
       const subordinates = await User.find({ bossId: userId });
-      return res.status(200).json({ boss, subordinates });
+      return res.status(200).json({ user, subordinates });
     } else if (role === "regular") {
       const user = await User.findById(userId);
 
@@ -141,7 +149,7 @@ const getUsers = async (req, res) => {
         });
       }
 
-      return res.status(200).json({ users: [user] });
+      return res.status(200).json({ user });
     } else {
       return res.status(400).json({ message: "Invalid user role" });
     }
@@ -197,7 +205,7 @@ const changeUserBoss = async (req, res) => {
 
     if (!boss) {
       return res.status(403).json({
-        message: "Access denied, only boss can change user's boss",
+        message: "Access denied, only user's boss can change new boss for him",
       });
     }
 
@@ -205,13 +213,13 @@ const changeUserBoss = async (req, res) => {
 
     if (loggedInUser.role !== "boss") {
       return res.status(403).json({
-        message: "Access denied, only boss can change the user's boss.",
+        message: "Access denied, only boss can change user's boss",
       });
     }
 
     if (boss._id.toString() !== loggedInUser._id.toString()) {
       return res.status(403).json({
-        message: "Access denied. Only boss can change the user's boss.",
+        message: "Access denied, only user's boss can change new boss for him",
       });
     }
 
