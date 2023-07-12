@@ -1,79 +1,73 @@
 const User = require("../models/user.model");
 const { hashPassword, comparePasswords } = require("../utils/hash.util");
 const { jwtSign, jwtVerify } = require("../utils/jwt.util");
-require("dotenv").config();
 
 const signUp = async (req, res) => {
-  try {
-    const { name, email, password, role, bossName } = req.body;
+  const { name, email, password, role, bossName } = req.body;
 
-    const user = await User.findOne({
-      email,
+  const user = await User.findOne({
+    email,
+  });
+  if (user) {
+    return res.status(409).send({
+      message: "Email in use",
     });
-    if (user) {
-      return res.status(409).send({
-        message: "Email in use",
-      });
-    }
-
-    const usersCount = await User.countDocuments();
-    if (usersCount === 0 && role !== "administrator") {
-      return res.status(400).json({
-        message: "The first registered user must be only an administrator",
-      });
-    }
-
-    const adminExists = await User.exists({ role: "administrator" });
-    if (role === "administrator" && adminExists) {
-      return res.status(400).json({
-        message:
-          "Administrator user already exists. Only one user can be administrator",
-      });
-    }
-
-    let bossId = null;
-
-    if (role !== "administrator" && bossName) {
-      const boss = await User.findOne({ name: bossName });
-      if (!boss) {
-        return res
-          .status(400)
-          .json({ message: "Invalid bossName. Boss does not exist." });
-      }
-      bossId = boss._id;
-    }
-
-    const newUser = await User.create({
-      name,
-      email,
-      password: hashPassword(password),
-      role,
-      bossId,
-    });
-
-    const updatedUser = await User.findOneAndUpdate(
-      {
-        _id: newUser._id,
-      },
-      {
-        token: jwtSign({ _id: newUser._id }),
-      },
-      {
-        new: true,
-      }
-    ).select("-password");
-
-    res.status(201).send({
-      user: {
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
-      },
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
   }
+
+  const usersCount = await User.countDocuments();
+  if (usersCount === 0 && role !== "administrator") {
+    return res.status(400).json({
+      message: "The first registered user must be only an administrator",
+    });
+  }
+
+  const adminExists = await User.exists({ role: "administrator" });
+  if (role === "administrator" && adminExists) {
+    return res.status(400).json({
+      message:
+        "Administrator user already exists. Only one user can be an administrator",
+    });
+  }
+
+  let bossId = null;
+
+  if (role !== "administrator" && bossName) {
+    const boss = await User.findOne({ name: bossName });
+    if (!boss) {
+      return res
+        .status(400)
+        .json({ message: "Invalid bossName. Boss does not exist." });
+    }
+    bossId = boss._id;
+  }
+
+  const newUser = await User.create({
+    name,
+    email,
+    password: hashPassword(password),
+    role,
+    bossId,
+  });
+
+  const updatedUser = await User.findOneAndUpdate(
+    {
+      _id: newUser._id,
+    },
+    {
+      token: jwtSign({ _id: newUser._id }),
+    },
+    {
+      new: true,
+    }
+  ).select("-password");
+
+  res.status(201).send({
+    user: {
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+    },
+  });
 };
 
 const authenticateUser = async (req, res) => {
@@ -117,45 +111,40 @@ const authenticateUser = async (req, res) => {
 const getUsers = async (req, res) => {
   const { role, userId } = req.body;
 
-  try {
-    if (role === "administrator") {
-      const user = await User.findById(userId);
+  if (role === "administrator") {
+    const user = await User.findById(userId);
 
-      if (user.role !== "administrator") {
-        return res.status(403).json({
-          message: "User is not authorized to perform this operation",
-        });
-      }
-
-      const users = await User.find();
-      return res.status(200).json({ users });
-    } else if (role === "boss") {
-      const user = await User.findById(userId);
-
-      if (user.role !== "boss") {
-        return res.status(403).json({
-          message: "User is not authorized to perform this operation",
-        });
-      }
-
-      const subordinates = await User.find({ bossId: userId });
-      return res.status(200).json({ user, subordinates });
-    } else if (role === "regular") {
-      const user = await User.findById(userId);
-
-      if (user.role !== "regular") {
-        return res.status(403).json({
-          message: "User is not authorized to perform this operation",
-        });
-      }
-
-      return res.status(200).json({ user });
-    } else {
-      return res.status(400).json({ message: "Invalid user role" });
+    if (user.role !== "administrator") {
+      return res.status(403).json({
+        message: "User is not authorized to perform this operation",
+      });
     }
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server Error" });
+
+    const users = await User.find();
+    return res.status(200).json({ users });
+  } else if (role === "boss") {
+    const user = await User.findById(userId);
+
+    if (user.role !== "boss") {
+      return res.status(403).json({
+        message: "User is not authorized to perform this operation",
+      });
+    }
+
+    const subordinates = await User.find({ bossId: userId });
+    return res.status(200).json({ user, subordinates });
+  } else if (role === "regular") {
+    const user = await User.findById(userId);
+
+    if (user.role !== "regular") {
+      return res.status(403).json({
+        message: "User is not authorized to perform this operation",
+      });
+    }
+
+    return res.status(200).json({ user });
+  } else {
+    return res.status(400).json({ message: "Invalid user role" });
   }
 };
 
@@ -196,48 +185,41 @@ const changeUserBoss = async (req, res) => {
   const userId = req.params.id;
   const { newBossId } = req.body;
 
-  try {
-    const user = await User.findById(userId);
+  const user = await User.findById(userId);
 
-    const boss = await User.findOne({
-      _id: user.bossId,
+  const boss = await User.findOne({
+    _id: user.bossId,
+  });
+
+  if (!boss) {
+    return res.status(403).json({
+      message: "Access denied, only user's boss can change new boss for him",
     });
-
-    if (!boss) {
-      return res.status(403).json({
-        message: "Access denied, only user's boss can change new boss for him",
-      });
-    }
-
-    const loggedInUser = await User.findById(req.userId);
-
-    if (loggedInUser.role !== "boss") {
-      return res.status(403).json({
-        message: "Access denied, only boss can change user's boss",
-      });
-    }
-
-    if (boss._id.toString() !== loggedInUser._id.toString()) {
-      return res.status(403).json({
-        message: "Access denied, only user's boss can change new boss for him",
-      });
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { bossId: newBossId },
-      { new: true }
-    );
-
-    return res
-      .status(200)
-      .json({ message: "User's boss has been changed", user: updatedUser });
-  } catch (err) {
-    console.error(err);
-    return res
-      .status(500)
-      .json({ message: "Server error, something went wrong!" });
   }
+
+  const loggedInUser = await User.findById(req.userId);
+
+  if (loggedInUser.role !== "boss" && loggedInUser.role !== "administrator") {
+    return res.status(403).json({
+      message: "Access denied, only boss can change user's boss",
+    });
+  }
+
+  if (boss._id.toString() !== loggedInUser._id.toString()) {
+    return res.status(403).json({
+      message: "Access denied, only user's boss can change new boss for him",
+    });
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { bossId: newBossId },
+    { new: true }
+  );
+
+  return res
+    .status(200)
+    .json({ message: "User's boss has been changed", user: updatedUser });
 };
 
 module.exports = {
