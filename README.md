@@ -20,3 +20,8 @@ Theere are such REST API endpoints:
 
 The project is built using JavaScript, Node.js, Express.js, MongoDB, Postman, GitHub, bcryptjs, dotenv, express, 
 express-joi-validation, joi, jsonwebtoken, mongoose.
+
+Example of .env file:
+MONGODB_USERNAME=""
+MONGODB_PASSWORD=""
+JWT_SECRET=""
